@@ -55,7 +55,7 @@ spring:
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/bm_api_gw
     username: bm_api_gw
-    password:
+    password: 123
   thymeleaf:
     cache: false
   sleuth:
