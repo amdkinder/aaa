@@ -1,0 +1,80 @@
+# This configuration is intended for development purpose, it's **your** responsibility to harden it for production
+version: '3.8'
+services:
+  bm_api_gw-app:
+    image: bm_api_gw
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
+      - SPRING_CLOUD_CONSUL_HOST=consul
+      - SPRING_CLOUD_CONSUL_PORT=8500
+      - SPRING_R2DBC_URL=r2dbc:postgresql://bm_api_gw-postgresql:5432/bm_api_gw
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://bm_api_gw-postgresql:5432/bm_api_gw
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/auth/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=web_app
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=web_app
+      - JHIPSTER_SLEEP=30 # gives time for other services to boot before the application
+    # If you want to expose these ports outside your dev PC,
+    # remove the "127.0.0.1:" prefix
+    ports:
+      - 127.0.0.1:8886:8886
+  bm_api_gw-postgresql:
+    image: postgres:13.3
+    # volumes:
+    #   - ~/volumes/jhipster/bm_api_gw/postgresql/:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=bm_api_gw
+      - POSTGRES_PASSWORD=
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    # If you want to expose these ports outside your dev PC,
+    # remove the "127.0.0.1:" prefix
+    ports:
+      - 127.0.0.1:5432:5432
+  consul:
+    image: consul:1.9.5
+    # If you want to expose these ports outside your dev PC,
+    # remove the "127.0.0.1:" prefix
+    ports:
+      - 127.0.0.1:8300:8300
+      - 127.0.0.1:8500:8500
+      - 127.0.0.1:8600:8600
+    command: consul agent -dev -ui -client 0.0.0.0 -log-level=INFO
+
+  consul-config-loader:
+    image: jhipster/consul-config-loader:v0.4.1
+    volumes:
+      - ./central-server-config:/config
+    environment:
+      - INIT_SLEEP_SECONDS=5
+      - CONSUL_URL=consul
+      - CONSUL_PORT=8500
+      # Uncomment to load configuration into Consul from a Git repository
+      # as configured in central-server-config/git2consul.json
+      # Also set SPRING_CLOUD_CONSUL_CONFIG_FORMAT=files on your apps
+      # - CONFIG_MODE=git
+  keycloak:
+    image: jboss/keycloak:12.0.4
+    command:
+      [
+        '-b',
+        '0.0.0.0',
+        '-Dkeycloak.migration.action=import',
+        '-Dkeycloak.migration.provider=dir',
+        '-Dkeycloak.migration.dir=/opt/jboss/keycloak/realm-config',
+        '-Dkeycloak.migration.strategy=OVERWRITE_EXISTING',
+        '-Djboss.socket.binding.port-offset=1000',
+        '-Dkeycloak.profile.feature.upload_scripts=enabled',
+      ]
+    volumes:
+      - ./realm-config:/opt/jboss/keycloak/realm-config
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - DB_VENDOR=h2
+    # If you want to expose these ports outside your dev PC,
+    # remove the "127.0.0.1:" prefix
+    ports:
+      - 127.0.0.1:9080:9080
+      - 127.0.0.1:9443:9443
+      - 127.0.0.1:10990:10990
